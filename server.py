@@ -1,7 +1,8 @@
-# CSE 138 Assignment 2
+# CSE 138 Assignment 3
 from flask import Flask, request, render_template, jsonify
 import os
 import sys
+from mainKeyVal import mainKeyVal
 
 app = Flask(__name__)
 
@@ -19,19 +20,16 @@ def keyValStore(key_name):
         return server.delete(request, key_name)
 
 @app.route("/kv-store/key-count", methods = ["GET"])
-def keyValStore(key_name):
+def countKey(key_name):
     if request.method == "GET":
         return server.put(request, key_name)
 
 
 @app.route("/kv-store/view-change", methods = ["PUT"])
-def keyValStore(key_name):
+def changeView(key_name):
     if request.method == "PUT":
         return server.put(request, key_name)
 
 if __name__ == "__main__":
-    if 'FORWARDING_ADDRESS' not in os.environ:
-        server = mainKeyVal()
-    else:
-        server = followerKeyVal()
+    server = mainKeyVal()
     app.run(debug=True, host = '0.0.0.0', port = 13800)
