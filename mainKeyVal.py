@@ -13,7 +13,6 @@ class mainKeyVal:
 
 	def hash_key(self, key_value):
 		hexVal = int(hashlib.sha1(key_value.encode('utf-8')).hexdigest(), 16)
-		print('hexVal: ', hexVal)
 		return self.ip_list[hexVal % len(self.ip_list)]
 
 	def get(self, request, key_name):
@@ -34,13 +33,18 @@ class mainKeyVal:
 							response = requests.get('http://'+ key_hash + '/kv-store/keys/' + key_name, headers=dict(request.headers), timeout=20)
 					except:
 						return jsonify({'error': 'Node in view (' + key_hash + ') does not exist', 'message': 'Error in GET'}), 503
-					return response.content, response.status_code
+					if response.status_code == 200:
+						json_response = response.json()
+						json_response.update({'address': key_hash})
+						return json_response, response.status_code
+					else:
+						return response.content, response.status_code
 			return jsonify({'error': 'Missing VIEW environmental variable', 'message': 'Error in GET'}), 503
 					
 	def put(self, request, key_name):
 		if len(key_name) > 50:
 			return jsonify({"error:":"Key is too long", "message":"Error in PUT"}), 400
-			
+		print(len(key_name))
 		req_data = request.get_json(silent=True)
 		if req_data is not None and 'value' in req_data:
 			if len(self.ip_list) != 0: # Make sure list is non empty
@@ -86,5 +90,10 @@ class mainKeyVal:
 							response = requests.delete('http://'+ key_hash + '/kv-store/keys/' + key_name, headers=dict(request.headers), timeout=20)
 					except:
 						return jsonify({'error': 'Node in view (' + key_hash + ') does not exist', 'message': 'Error in DELETE'}), 503
-					return response.content, response.status_code
+					if response.status_code == 200:
+						json_response = response.json()
+						json_response.update({'address': key_hash})
+						return json_response, response.status_code
+					else:
+						return response.content, response.status_code
 			return jsonify({'error': 'Missing VIEW environmental variable', 'message': 'Error in GET'}), 503
