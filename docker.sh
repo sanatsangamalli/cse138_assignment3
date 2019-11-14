@@ -1,7 +1,7 @@
 # ------------------------------
 # Run Docker containers
 
-path_to_dockerfile="This should be a dockerfile path"
+path_to_dockerfile="."
 
 docker network create --subnet=10.10.0.0/16 kv_subnet
 docker build -t kv-store:3.0 $path_to_dockerfile
