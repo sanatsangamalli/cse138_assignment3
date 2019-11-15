@@ -1,4 +1,4 @@
-Hash implementation:
+Partitioning keys using Hash implementation:
 We use an endpoint for the key operations for this section. We pass in the VIEW environment
 variable from server.py to mainKeyVal.py. For the GET, PUT, and DELETE methods,
 we call a function called determineDestination(), passing in self and the name of 
@@ -18,3 +18,18 @@ also do error handling.
 
 
 View change implementation: 
+When a view change is requested by the client, the server handling the request takes on the role of the view change leader.
+This makes all other servers take on the role of follower.
+The view change leader sends a "prime" message to the followers, which contains the new view
+As soon as a follower receives the "prime" message, it will be open to receiving values as part of the view change, but it will not start to send values yet.
+Each follower then iterates across all of its keys to determine which ones need to move to a different server.
+Each follower also creates a "message vector," which matches the cardinality of the set of all servers, and keeps track of
+how many messages will be sent to each other server.
+The followers then send prime acknowledgements back to the leader, including their message vectors.
+Once the leader receives a prime acknowledgement from each follower, it creates its own message
+vector and sums all message vectors. The resulting vector is a complete count of how many messages each server should receive
+by the end of the view change.
+Next, the leader sends a "start change" message to each follower, which includes the number of messages that the follower should receive, letting them know that it is safe to start sending values before beginning to send values itself.
+The followers then wait until they have received a number of messages equal to the expected amount contained in the "start change" message.
+When a follower receives the correct number of messages, it sends a "done" message to the leader.
+Once the leader receives a done message from every follower, and has also received any messages it expects to, the view change is complete, and the leader sends a success message to the client
