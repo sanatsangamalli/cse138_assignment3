@@ -17,6 +17,7 @@ class mainKeyVal:
 		self.view.sort()
 
 		self.leadingViewChange = False
+		self.expectedReceiveCount = 0
 		self.receiveFinalMessageEvent = threading.Event()
 
 	def determineDestination(self, key_value):
@@ -77,6 +78,8 @@ class mainKeyVal:
 					json_response = response.json()
 					json_response.update({'address': key_hash})
 					return json_response, response.status_code
+			else:
+				return jsonify({"error:":"Value is missing", "message":"Error in PUT"}), 400
 		else:
 			return jsonify({"error:":"Value is missing", "message":"Error in PUT"}), 400
 			
@@ -115,6 +118,9 @@ class mainKeyVal:
 		req_data = request.get_json(silent=True)
 		newView = req_data["view"]
 		receivers = newView.split(',')
+		print('Receivers = ', receivers)
+		request.host = os.environ['ADDRESS'] # REMOVE LATER (maybe)
+		print('Request.host = ', request.host)
 		receivers.remove(request.host)
 
 		self.view = newView.split(',')
@@ -141,19 +147,27 @@ class mainKeyVal:
 		self.receiveFinalMessageEvent = threading.Event() 
 		# if we've received the last one, send start message with final total
 		# each element should be of format i.e. { "address": "10.10.0.2:13800", "key-count": 5 },
+		print("Hostshard waiting for ", self.totalMsgVector[request.host])
+		hostShard = self.startChange(self.totalMsgVector[request.host]).get_json()
+		
 		shardPool = ThreadPool(len(receivers))
 		shards = shardPool.map(self.sendStartMessage, receivers)
 		shardPool.close()
 
-		hostShard = self.startChange(self.totalMsgVector[request.host]).get_json()
+		if self.expectedReceiveCount > 0:
+			print('waiting for receiveFinalMessageEvent')
+			self.receiveFinalMessageEvent.wait()
 
 		shardPool.join()
+
 
 		# finalShards
 		for shard in shards:
 			shards[shards.index(shard)] = {"address": shard.json()["address"], "key-count": shard.json()["key-count"]}
+		hostShard['key-count'] = len(self.dictionary)
 		shards.append(hostShard)
-
+		self.changingView = False
+		self.leadingViewChange = False
 		return jsonify({"message": "View change successful", "shards": shards}), 200 
 
 
@@ -175,6 +189,7 @@ class mainKeyVal:
 
 		self.view = newView.split(',')
 		self.view.sort()
+		self.expectedReceiveCount = 0
 		#determine message vector
 		#messageVector = (0, )* len(self.view)
 		messageVector = {}
@@ -206,29 +221,37 @@ class mainKeyVal:
 
 
 
-	def startChange(self, expectedReceiveCount):
+	def startChange(self, receiveCount):
 		# store message vector
-		self.expectedReceiveCount = expectedReceiveCount
+		print("STARTING STARTCHANGE: ", receiveCount)
+		self.expectedReceiveCount += receiveCount
 
 		# send staged messages
 		# for key, address in self.stagedMessages:
 		#   sendKeyValue(key, address)
 		if len(self.stagedMessages) > 0:
 			messagePool = ThreadPool(len(self.stagedMessages))
-			messagePool.map(sendKeyValue, self.stagedMessages)
+			messagePool.map(self.sendKeyValue, self.stagedMessages)
 			messagePool.close()
 
 			messagePool.join()
 
-		if self.expectedReceiveCount > 0:
+		
+		#while self.expectedReceiveCount > 0:
+		#	None
+
+		if self.leadingViewChange == False and self.expectedReceiveCount > 0:
 			print('waiting for receiveFinalMessageEvent')
 			self.receiveFinalMessageEvent.wait()
 
+		print("Test stagedMessages")
 		for key in self.stagedMessages:
-			self.dictionary.remove(key)
+			del self.dictionary[key]
 
 		self.changingView = False
-
+		
+		print("DICT AT END OF STARTCHANGE: ", self.dictionary)
+		print(jsonify({"address": request.host, "key-count": len(self.dictionary)}).json)
 		return jsonify({"address": request.host, "key-count": len(self.dictionary)})
 
 
@@ -246,9 +269,11 @@ class mainKeyVal:
 
 		if self.expectedReceiveCount == 0:
 			self.receiveFinalMessageEvent.set()
+		return jsonify({"message":"Success"}), 200
 
-	def sendKeyValue(self, key, value, address):
-		return requests.put('http://'+ address + '/kv-store/view-change/receive?key=' + key + '&value=' + self.dictionary[key],timeout=20)
+	def sendKeyValue(self, key):
+		print("Dest: "+ self.stagedMessages[key] + ", Key = " + key)
+		return requests.put('http://'+ self.stagedMessages[key] + '/kv-store/view-change/receive?key=' + key + '&value=' + self.dictionary[key],timeout=20)
 
 	# return jsonify of dict size 
 	def getKeyCount(self):

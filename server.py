@@ -35,7 +35,7 @@ def receive():
 	if request.method == "PUT":
 		arguments = request.args.to_dict()
 		k = arguments["key"]
-		v - arguments["value"]
+		v = arguments["value"]
 		a = request.remote_addr
 		return server.receiveValue(k,v,a)
 	elif request.method == "GET":
