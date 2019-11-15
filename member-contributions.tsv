@@ -1,4 +1,4 @@
-ssangama	Worked on getting server running and the PUT and DELETE requests. Worked in conjunction with jaburdic.
-adbhagat	"Worked on follower instance and sending messages between follower and main instance. Helped debug, worked with eherna61."
-jaburdic	"Helped refactor code into mainKeyVal and debugging with PUT request, as well as the GET and DELETE requests. Worked in conjunction with ssangama."
-eherna61	"Helped with python syntax errors, testing and debuggin follower-instance."
+ssangama	Worked on key operations with hash implementation and forwarding to other nodes. Worked in conjunction with adbhagat.
+adbhagat	"Worked on choosing and implementing hash implementation and forwarding requests between nodes. Helped debug, worked with ssangama."
+jaburdic	"Worked on implementing the key-count endpoint and view change endpoint into the code. Worked in conjunction with eherna61."
+eherna61	"Worked on adding the key-count and view change endpoints into our code. Worked in conjunction with jaburdic."
