@@ -70,50 +70,39 @@ class mainKeyVal:
 		resultingMsgVectors = pool.map(self.sendPrimeMessage, receivers)
 		pool.close()
 
-		myMsgVector = self.prime(request.host, newView)
+		self.totalMsgVector = self.prime(request.host, newView)[0].get_json()
 
 		pool.join()
 
-		self.totalMsgVector = myMsgVector
-		print(type(self.totalMsgVector))
-		print(self.totalMsgVector[0])
-		self.totalMsgVector = (self.totalMsgVector[0].get_json())["messageVector"]
-		print('here')
-		print(type(self.totalMsgVector))
-		print(self.totalMsgVector)
 		# add message vector to our running total
 		for response in resultingMsgVectors:
-			print('test message ')
-			# vectorResponse =  response.get_json()['messageVector']
-			print(type(response))
-			print(response)
-			vectorResponse =  response.json()["messageVector"]
-			print(vectorResponse)
-			print(type(vectorResponse))
-			# print(json.loads(vectorResponse)["messageVector"])
-			self.totalMsgVector = tuple(map(operator.add, (self.totalMsgVector), vectorResponse))#json.loads(vectorResponse)["messageVector"
-			# self.totalMsgVector = self.totalMsgVector + json.loads(response.json())['vector']
+			vectorResponse = response.json()
+			for address in self.totalMsgVector:
+				self.totalMsgVector[address] += vectorResponse[address]
 
-		self.receiveFinalMsg = threading.Event()	
-		self.finalMsgReceive = False  
+		self.receiveFinalMsg = threading.Event() 
 		# if we've received the last one, send start message with final total
 		# each element should be of format i.e. { "address": "10.10.0.2:13800", "key-count": 5 },
 		shardPool = ThreadPool(len(receivers))
 		shards = shardPool.map(self.sendStartMessage, receivers)
 		shardPool.close()
 
-		hostShard = self.startChange(self.totalMsgVector)
+		hostShard = self.startChange(self.totalMsgVector[request.host]).get_json()
 
 		shardPool.join()
-		
 
 		print('shard')
+		# finalShards
 		for shard in shards:
 			print(type(shard))
+			shards[shards.index(shard)] = {"address": shard.json()["address"], "key-count": shard.json()["key-count"]}
 			print(shard)
-			shard = {"address": shard.json()["address"], "key-count": shard.json()["key-count"]}
+		print(hostShard)
+		print(type(hostShard))
 		shards.append(hostShard)
-
+		print('shards')
+		print(type(shards))
+		print(shards)
 
 		return jsonify({"message": "View change successful", "shards": shards}), 200 
 		# self.completedViewChange = threading.Event()
@@ -125,7 +114,9 @@ class mainKeyVal:
 		return requests.get('http://'+ address + '/kv-store/view-change/receive?view='+ (",".join(self.view)),timeout=20)
 
 	def sendStartMessage(self, address):
-		return requests.post('http://'+ address + '/kv-store/view-change/receive', data= json.dumps(self.totalMsgVector), timeout=20)
+		print('sendStartMessage totalMsgVector')
+		print(self.totalMsgVector)
+		return requests.post('http://'+ address + '/kv-store/view-change/receive?count=' + str(self.totalMsgVector[address]), timeout=20)
 
 	# followers
 	# just send message 
@@ -135,20 +126,30 @@ class mainKeyVal:
 		self.stagedMessages = {}
 
 		self.view = newView.split(',')
-		print(len(self.view))
 		#determine message vector
-		messageVector = (0, )* len(self.view)
+		#messageVector = (0, )* len(self.view)
+		messageVector = {}
+		for address in self.view:
+				messageVector[address] = 0
+
 		for key, value in self.dictionary:
+			destination = determineDestination(key)
+			if destination != host:
+				messageVector[destination] += 1
+				self.stagedMessages[key] = destination
+
+		"""for key, value in self.dictionary:
 			 for i in range(0, len(newView)):
 			 	destination = determineDestination(key, newView)
 			 	if newView[i] == destination and destination != host:
 			 		messageVector[i] = messageVector[i] + 1
 			 		stagedMessages[key] = destination
+ 		"""
 		print("prime...")
 		print(messageVector)
 		# return jsonify(messageVector)
 		# return Response(jsonify({"messageVector": messageVector}), status=200,mimetype='application/json')
-		return jsonify({"messageVector": messageVector}), 200
+		return jsonify(messageVector), 200
 
 		# return jsonify(messageVector)
 		#send primeAck w/ vector
@@ -156,12 +157,9 @@ class mainKeyVal:
 
 
 
-	def startChange(self, msgVector):
-		req_data = request.get_json(silent=True)
-		# messageVector = req_data["messageVector"]
-
+	def startChange(self, expectedReceiveCount):
 		# store message vector
-		self.totalMsgVector = msgVector
+		self.expectedReceiveCount = expectedReceiveCount
 
 		# send staged messages
 		# for key, address in self.stagedMessages:
@@ -173,19 +171,15 @@ class mainKeyVal:
 
 			messagePool.join()
 
-		receivedFinalMessage = True
-		for entry in self.totalMsgVector:
-			if entry != 0:
-				receivedFinalMessage = False
-		self.finalMsgReceive = receivedFinalMessage
-
-		if self.finalMsgReceive == False:
+		if self.expectedReceiveCount > 0:
 			self.receiveFinalMessageEvent.wait()
 
 		for key, address in self.stagedMessages:
 			self.dictionary.remove(key)
 
-		return {"address": request.host, "key-count": len(self.dictionary)}
+		self.changingView = False
+
+		return jsonify({"address": request.host, "key-count": len(self.dictionary)})
 
 
 
@@ -195,16 +189,10 @@ class mainKeyVal:
 		# set change view to false here only if not arbiter
 
 		self.dictionary[key] = value
-		for i in range(0, len(self.view)):
-			if self.view[i] == sender:
-				self.totalMsgVector[i] = self.totalMsgVector[i] - 1
 
-		receivedFinalMessage = True
-		for entry in self.totalMsgVector:
-			if entry != 0:
-				receivedFinalMessage = False
+		self.expectedReceiveCount -= 1
 
-		if receivedFinalMessage:
+		if self.expectedReceiveCount == 0:
 			self.receiveFinalMessageEvent.set()
 
 	def sendKeyValue(self, key, address):
