@@ -1,0 +1,20 @@
+Hash implementation:
+We use an endpoint for the key operations for this section. We pass in the VIEW environment
+variable from server.py to mainKeyVal.py. For the GET, PUT, and DELETE methods,
+we call a function called determineDestination(), passing in self and the name of 
+the key. We used a hash function from the hashlib python library to get a hashed 
+value for our key. Specifically, we are using the sha1 hash. Then we would take 
+the modulus of that on the length of VIEW(the number of nodes). Then we take that index 
+on the list of nodes we have to determine which node we place the key on. We then 
+check via the ADDRESS environment variable which node gets the request. For the GET and 
+DELETE methods, we did error handling if the ADDRESS environment variable matched the
+hash destination and the key didn't exist. Else, we would have to do forwarding to the 
+appropriate node. Since forwarding was true we included the address of the node the key
+was actually stored on in the json response. We also included more error handling. For 
+the PUT method, if the ADDRESS environment variable matches the hash destination we simply
+add the key to the current node. If not, then we just forward to the appropriate node. We 
+output a message based on whether or not the key was already existent within that node. We
+also do error handling.
+
+
+View change implementation: 
