@@ -33,12 +33,10 @@ class mainKeyVal:
 							response = requests.get('http://'+ key_hash + '/kv-store/keys/' + key_name, headers=dict(request.headers), timeout=20)
 					except:
 						return jsonify({'error': 'Node in view (' + key_hash + ') does not exist', 'message': 'Error in GET'}), 503
-					if response.status_code == 200:
-						json_response = response.json()
-						json_response.update({'address': key_hash})
-						return json_response, response.status_code
-					else:
-						return response.content, response.status_code
+					json_response = response.json()
+					json_response.update({'address': key_hash})
+					return json_response, response.status_code
+					#return response.content, response.status_code
 			return jsonify({'error': 'Missing VIEW environmental variable', 'message': 'Error in GET'}), 503
 					
 	def put(self, request, key_name):
@@ -67,7 +65,9 @@ class mainKeyVal:
 						response = requests.put('http://'+ key_hash + '/kv-store/keys/' + key_name, data=json.dumps(req_data), headers=dict(request.headers), timeout=20)
 					except:
 						return jsonify({'error': 'Node in view (' + key_hash + ') does not exist', 'message': 'Error in PUT'}), 503
-					return response.content, response.status_code
+					json_response = response.json()
+					json_response.update({'address': key_hash})
+					return json_response, response.status_code
 		else:
 			return jsonify({"error:":"Value is missing", "message":"Error in PUT"}), 400
 			
@@ -90,10 +90,8 @@ class mainKeyVal:
 							response = requests.delete('http://'+ key_hash + '/kv-store/keys/' + key_name, headers=dict(request.headers), timeout=20)
 					except:
 						return jsonify({'error': 'Node in view (' + key_hash + ') does not exist', 'message': 'Error in DELETE'}), 503
-					if response.status_code == 200:
-						json_response = response.json()
-						json_response.update({'address': key_hash})
-						return json_response, response.status_code
-					else:
-						return response.content, response.status_code
+					json_response = response.json()
+					json_response.update({'address': key_hash})
+					return json_response, response.status_code
+					#return response.content, response.status_code
 			return jsonify({'error': 'Missing VIEW environmental variable', 'message': 'Error in GET'}), 503
