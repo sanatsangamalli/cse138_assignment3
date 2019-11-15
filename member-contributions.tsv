@@ -1,0 +1,4 @@
+ssangama	Worked on key operations with hash implementation and forwarding to other nodes. Worked in conjunction with adbhagat.
+adbhagat	"Worked on choosing and implementing hash implementation and forwarding requests between nodes. Helped debug, worked with ssangama."
+jaburdic	"Worked on implementing the key-count endpoint and view change endpoint into the code. Worked in conjunction with eherna61."
+eherna61	"Worked on adding the key-count and view change endpoints into our code. Worked in conjunction with jaburdic."
