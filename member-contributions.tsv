@@ -1,0 +1,4 @@
+ssangama	Worked on getting server running and the PUT and DELETE requests. Worked in conjunction with jaburdic.
+adbhagat	"Worked on follower instance and sending messages between follower and main instance. Helped debug, worked with eherna61."
+jaburdic	"Helped refactor code into mainKeyVal and debugging with PUT request, as well as the GET and DELETE requests. Worked in conjunction with ssangama."
+eherna61	"Helped with python syntax errors, testing and debuggin follower-instance."
