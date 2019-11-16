@@ -156,7 +156,7 @@ class mainKeyVal:
 
 		# Loop through shards to get all key counts and construct JSON response
 		for idx, shard in enumerate(shards):
-			shards[shards.index(shard)] = {"address": shard.json()["address"], "key-count": shard.json()["key-count"]}
+			shards[idx] = {"address": shard.json()["address"], "key-count": shard.json()["key-count"]}
 		hostShard['key-count'] = len(self.dictionary)
 		shards.append(hostShard) # Append the leading node's shard
 		self.changingView = False
