@@ -10,6 +10,7 @@ app = Flask(__name__)
 def begin():
 	return "welcome to the home page"
 
+# Function to perform main key-value store operations (GET, PUT, DELETE)
 @app.route("/kv-store/keys/<string:key_name>", methods = ["GET","PUT", "DELETE"])
 def keyValStore(key_name):
 	if request.method == "PUT":
@@ -18,47 +19,44 @@ def keyValStore(key_name):
 		return server.get(request, key_name)
 	elif request.method == "DELETE":
 		return server.delete(request, key_name)
+	else:
+		return jsonify({"message": "Method Not Supported"}), 404 
 
+# Function to return the key-count
 @app.route("/kv-store/key-count", methods = ["GET"])
 def keyCount():
 	if request.method == "GET":
 		return server.getKeyCount()
+	else:
+		return jsonify({"message": "Method Not Supported"}), 404 
 
-
-@app.route("/kv-store/view-change", methods = ["PUT", "prime",  "startChange", "receiveValue", "doneAck"])
+# Function called when a view change is requested
+@app.route("/kv-store/view-change", methods = ["PUT", "prime",  "startChange", "receiveValue"])
 def view_change():
 	if request.method == "PUT":
 		return server.viewChange(request)
+	else:
+		return jsonify({"message": "Method Not Supported"}), 404 
 
+# Internal endpoint used between nodes in order to deal with the view change
+# protocol (sends keys between nodes, messaging system between nodes)
 @app.route("/kv-store/view-change/receive", methods = ["PUT", "GET", "POST"])
 def receive():
 	if request.method == "PUT":
 		arguments = request.args.to_dict()
-		k = arguments["key"]
-		v = arguments["value"]
-		a = request.remote_addr
-		return server.receiveValue(k,v,a)
+		new_key = arguments["key"]
+		new_value = arguments["value"]
+		address = request.remote_addr
+		return server.receiveValue(new_key, new_value, address) # Node receives a key from another node
 	elif request.method == "GET":
-		arguments = request.args.to_dict()
-		print("got get request about to prime")
+		arguments = request.args.to_dict() # Return vector of message counts
 		return server.prime(request.host, arguments["view"])
 	elif request.method == "POST":
 		arguments = request.args.to_dict()
 		count = int(arguments["count"])
-		print('count is:')
-		print(count)
-		return server.startChange(count)
-
-#@app.route("/kv-store/key-count", methods = ["GET"])
-#def countKey(key_name):
-#	if request.method == "GET":
-#		return server.put(request, key_name)
-
-
-#@app.route("/kv-store/view-change", methods = ["PUT"])
-#def changeView(key_name):
-#	if request.method == "PUT":
-#		return server.put(request, key_name)
+		return server.startChange(count) # Node begins sending out its keys
+	else:
+		return jsonify({"message": "Method Not Supported"}), 404
 
 if __name__ == "__main__":
 	if 'VIEW' in os.environ:
