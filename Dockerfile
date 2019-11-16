@@ -1,9 +1,6 @@
 # Use an official Python runtime as a parent image
 FROM python:3.6
 
-#ENV http_proxy http://proxy-chain.xxx.com:911/ 
-#ENV https_proxy http://proxy-chain.xxx.com:912/ 
-
 # Set the working directory to /app
 WORKDIR /app
 
